@@ -1,5 +1,3 @@
-{-# OPTIONS_GHC -Wno-deprecations #-}
-
   -- Base
 import           System.Directory
 import           System.Exit                         (exitSuccess)
@@ -27,9 +25,9 @@ import           XMonad.Prelude                      (Endo, fromJust, isDigit,
                                                       isJust, isSpace, toUpper)
     -- Hooks
 import           XMonad.Hooks.DynamicLog             (PP (..), dynamicLogWithPP,
-                                                      shorten, wrap,
-                                                      xmobarBorder, xmobarColor,
-                                                      xmobarPP)
+                                                      filterOutWsPP, shorten,
+                                                      wrap, xmobarBorder,
+                                                      xmobarColor, xmobarPP)
 import           XMonad.Hooks.EwmhDesktops
 import           XMonad.Hooks.InsertPosition         (Focus (..), Position (..),
                                                       insertPosition)
@@ -41,12 +39,7 @@ import           XMonad.Hooks.ManageHelpers          (composeOne, doCenterFloat,
                                                       doFullFloat, isDialog,
                                                       isFullscreen,
                                                       isInProperty, (-?>))
-import           XMonad.Hooks.RefocusLast            (refocusLastLayoutHook,
-                                                      refocusLastWhen,
-                                                      refocusingIsActive)
 import           XMonad.Hooks.ServerMode
-import           XMonad.Hooks.SetWMName
-import           XMonad.Hooks.WorkspaceHistory
     -- Layouts
 import           XMonad.Layout.Gaps
 import           XMonad.Layout.GridVariants          (Grid (Grid))
@@ -88,7 +81,6 @@ import           XMonad.Util.EZConfig                (additionalKeysP)
 import           XMonad.Util.NamedScratchpad
 import           XMonad.Util.Run                     (runProcessWithInput,
                                                       safeSpawn, spawnPipe)
-import           XMonad.Util.SpawnOnce
 import           XMonad.Util.WorkspaceCompare        (getSortByIndex)
 
 ($.) :: (c -> d) -> (a -> b -> c) -> a -> b -> d
@@ -161,7 +153,6 @@ windowCount = gets $ Just . show . length . W.integrate' . W.stack . W.workspace
 myStartupHook :: X ()
 myStartupHook = do
     spawn "$HOME/.xmonad/scripts/autostart.sh"
-    setWMName "LG3D"
 
 
 ---------------------------------------------
@@ -213,7 +204,7 @@ mySpacing' :: Integer -> l a -> XMonad.Layout.LayoutModifier.ModifiedLayout Spac
 mySpacing' i = spacingRaw True (Border i i i i) True (Border i i i i) True
 
 tall     = renamed [Replace "tall"]
-           $ minimize . BW.boringWindows 
+           $ minimize . BW.boringWindows
            $ limitWindows 12
            $ mySpacing 9
            $ ResizableTall 1 (1/100) (1/2) []
@@ -394,13 +385,6 @@ myKeys =
         , ("<XF86HomePage>", spawn "firefox")
         , ("<Print>", spawn "screenshot")
         ]
-    -- The following lines are needed for named scratchpads.
-          where nonNSP          = WSIs (return (\ws -> W.tag ws /= "NSP"))
-                nonEmptyNonNSP  = WSIs (return (\ws -> isJust (W.stack ws) && W.tag ws /= "NSP"))
-
-filterOutNSP =
-  let g f xs = filter (\(W.Workspace t _ _) -> t /= "NSP") (f xs)
-  in  g <$> getSortByIndex
 
 myMouseBindings XConfig {XMonad.modMask = modm} = M.fromList
 
@@ -442,6 +426,9 @@ vlc       = ClassApp "Vlc"                  "vlc"
 yad       = ClassApp "Yad"                  "yad --text-info --text 'XMonad'"
 obs       = ClassApp "Obs"                  "obs"
 about     = TitleApp "About Mozilla Firefox" "About Mozilla Firefox"
+picture   = TitleApp "Picture-in-Picture"    "Picture-in-Picture"
+gcolor    = TitleApp "gcolor2"               "gcolor2"
+iwarp      = TitleApp "IWarp"                "IWarp"
 
 myManageHook = manageApps <+> manageSpawn <+> namedScratchpadManageHook myScratchPads
  where
@@ -464,6 +451,9 @@ myManageHook = manageApps <+> manageSpawn <+> namedScratchpadManageHook myScratc
             , obs
             , pavuctrl
             , about
+            , picture
+            , gcolor
+            , iwarp
             ]                                  -?> doCenterFloat
     , match [ evince, spotify, vlc, yad ]      -?> doFullFloat
     , resource =? "desktop_window"             -?> doIgnore
@@ -489,7 +479,7 @@ getNameCommand (NameApp  n c) = (n, c)
 getAppName    = fst . getNameCommand
 getAppCommand = snd . getNameCommand
 
-myEventHook = docksEventHook <+> ewmhDesktopsEventHook <+> fullscreenEventHook
+--myEventHook = docksEventHook <+> fullscreenEventHook
 
 
 main :: IO ()
@@ -507,7 +497,7 @@ main = do
         , borderWidth        = myBorderWidth
         , normalBorderColor  = myNormColor
         , focusedBorderColor = myFocusColor
-        , logHook = dynamicLogWithPP $ namedScratchpadFilterOutWorkspacePP $ xmobarPP
+        , logHook = dynamicLogWithPP $  filterOutWsPP [scratchpadWorkspaceTag] $ xmobarPP
               { ppOutput = \x -> hPutStrLn xmbar x                              -- xmobar
               , ppCurrent = xmobarColor "#71abeb" "" . xmobarBorder "Bottom"  myBorderColor 3 -- Current workspace
               , ppVisible = xmobarColor "#5AB1BB" ""                            -- Visible but not current workspace
