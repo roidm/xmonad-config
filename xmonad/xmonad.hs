@@ -1,87 +1,50 @@
-  -- Base
+import qualified Data.Map                            as M
 import           System.Directory
-import           System.Exit                         (exitSuccess)
-import           System.IO                           (hPutStrLn)
+import           System.Exit
+import           System.IO
 import           XMonad
-import           XMonad.Operations
-import qualified XMonad.StackSet                     as W
-
-    -- Actions
-import           XMonad.Actions.CopyWindow           (copyToAll, kill1,
-                                                      killAllOtherCopies)
-import           XMonad.Actions.CycleWS              (Direction1D (..),
-                                                      WSType (..), moveTo,
-                                                      nextScreen, prevScreen,
-                                                      shiftTo)
+import           XMonad.Actions.CopyWindow
+import           XMonad.Actions.CycleWS
+import           XMonad.Actions.Minimize
 import           XMonad.Actions.MouseResize
 import           XMonad.Actions.Promote
-import           XMonad.Actions.RotSlaves            (rotAllDown, rotSlavesDown)
-import           XMonad.Actions.WindowGo             (runOrRaise)
-import           XMonad.Actions.WithAll              (killAll, sinkAll)
-
-    -- Data
-import qualified Data.Map                            as M
-import           XMonad.Prelude                      (Endo, fromJust, isDigit,
-                                                      isJust, isSpace, toUpper)
-    -- Hooks
-import           XMonad.Hooks.DynamicLog             (PP (..), dynamicLogWithPP,
-                                                      filterOutWsPP, shorten,
-                                                      wrap, xmobarBorder,
-                                                      xmobarColor, xmobarPP)
+import           XMonad.Actions.RotSlaves
+import           XMonad.Actions.SpawnOn
+import           XMonad.Actions.WindowGo
+import           XMonad.Actions.WithAll
+import           XMonad.Hooks.DynamicLog
 import           XMonad.Hooks.EwmhDesktops
-import           XMonad.Hooks.InsertPosition         (Focus (..), Position (..),
-                                                      insertPosition)
-import           XMonad.Hooks.ManageDocks            (ToggleStruts (..),
-                                                      avoidStruts,
-                                                      docksEventHook,
-                                                      manageDocks)
-import           XMonad.Hooks.ManageHelpers          (composeOne, doCenterFloat,
-                                                      doFullFloat, isDialog,
-                                                      isFullscreen,
-                                                      isInProperty, (-?>))
-import           XMonad.Hooks.ServerMode
-    -- Layouts
-import           XMonad.Layout.Gaps
-import           XMonad.Layout.GridVariants          (Grid (Grid))
-import           XMonad.Layout.MouseResizableTile
-import           XMonad.Layout.ResizableTile
-import           XMonad.Layout.SimplestFloat
-import           XMonad.Layout.Spiral
-import           XMonad.Layout.ThreeColumns
-
-    -- Layouts modifiers
-import           XMonad.Actions.Minimize
+import           XMonad.Hooks.InsertPosition
+import           XMonad.Hooks.ManageDocks
+import           XMonad.Hooks.ManageHelpers
 import qualified XMonad.Layout.BoringWindows         as BW
 import qualified XMonad.Layout.Dwindle               as Dwindle
+import           XMonad.Layout.Gaps
 import           XMonad.Layout.LayoutModifier
-import           XMonad.Layout.LimitWindows          (decreaseLimit,
-                                                      increaseLimit,
-                                                      limitWindows)
+import           XMonad.Layout.LimitWindows
 import           XMonad.Layout.Minimize
-import           XMonad.Layout.MultiToggle           (EOT (EOT),
-                                                      Toggle (Toggle), mkToggle,
-                                                      single, (??))
-import qualified XMonad.Layout.MultiToggle           as MT (Toggle (..))
-import           XMonad.Layout.MultiToggle.Instances (StdTransformers (MIRROR, NBFULL, NOBORDERS))
+import           XMonad.Layout.MouseResizableTile
+import           XMonad.Layout.MultiToggle
+import qualified XMonad.Layout.MultiToggle           as MT
+import           XMonad.Layout.MultiToggle.Instances
 import           XMonad.Layout.Named
 import           XMonad.Layout.NoBorders
 import           XMonad.Layout.Renamed
+import           XMonad.Layout.ResizableTile
+import           XMonad.Layout.SimplestFloat
 import           XMonad.Layout.Spacing
-import qualified XMonad.Layout.ToggleLayouts         as T (ToggleLayout (Toggle),
-                                                           toggleLayouts)
-import           XMonad.Layout.WindowArranger        (WindowArrangerMsg (..),
-                                                      windowArrange)
+import           XMonad.Layout.ThreeColumns
+import qualified XMonad.Layout.ToggleLayouts         as T
+import           XMonad.Layout.WindowArranger
 import           XMonad.Layout.WindowNavigation
-
-
-   -- Utilities
-import           XMonad.Actions.SpawnOn              (manageSpawn, spawnOn)
-import           XMonad.Util.Dmenu
-import           XMonad.Util.EZConfig                (additionalKeysP)
+import           XMonad.Prelude                      (Endo, fromJust, isDigit,
+                                                      isJust, isSpace, toUpper)
+import qualified XMonad.StackSet                     as W
+import           XMonad.Util.EZConfig
+import           XMonad.Util.Hacks
 import           XMonad.Util.NamedScratchpad
-import           XMonad.Util.Run                     (runProcessWithInput,
-                                                      safeSpawn, spawnPipe)
-import           XMonad.Util.WorkspaceCompare        (getSortByIndex)
+import           XMonad.Util.Run
+import           XMonad.Util.WorkspaceCompare
 
 ($.) :: (c -> d) -> (a -> b -> c) -> a -> b -> d
 ($.) = (.) . (.)
@@ -122,12 +85,6 @@ myBorderColor  = "#71abeb"
 
 centreRect :: W.RationalRect
 centreRect = W.RationalRect (1 / 3) (1 / 3) (1 / 3) (1 / 3)
-
-videoRect :: W.RationalRect
-videoRect = W.RationalRect offset offset size size
-  where
-    size = 1 / 4
-    offset = 1 - size - (size / 8)
 
 isFloating :: Window -> WindowSet -> Bool
 isFloating w s = M.member w (W.floating s)
@@ -213,28 +170,16 @@ dwindle  = renamed [Replace "dwindle"]
            $ mySpacing 9
            $ limitWindows 12
            $ Dwindle.Dwindle R Dwindle.CW (2/2) (11/10)
-spirals  = renamed [Replace "spirals"]
-           $ minimize . BW.boringWindows
-           $ windowNavigation
-           $ mySpacing' 9
-           $ spiral (2/2)
 monocle  = renamed [Replace "monocle"]
+           $ minimize . BW.boringWindows
            $ limitWindows 20 Full
-grid     = renamed [Replace "grid"]
-           $ limitWindows 12
-           $ mySpacing 8
-           $ mkToggle (single MIRROR)
-           $ Grid (16/10)
-threeCol = renamed [Replace "threeCol"]
-           $ mySpacing' 9
-           $ limitWindows 7
-           $ ThreeCol 1 (1/100) (1/2)
 threeColMid = renamed [Replace "|C|"]
            $ minimize . BW.boringWindows
            $ mySpacing' 9
            $ limitWindows 7
            $ ThreeColMid 1 (1/100) (1/2)
 floats   = renamed [Replace "floats"]
+           $ minimize . BW.boringWindows
            $ limitWindows 20 simplestFloat
 
 
@@ -252,10 +197,7 @@ myLayoutHook = avoidStruts $ mouseResize $ windowArrange $ T.toggleLayouts float
              where
                myDefaultLayout =     withBorder myBorderWidth tall
                                  ||| dwindle
-                                 ||| spirals
                                  ||| avoidStruts (applyGaps mrt)
-                                 ||| grid
-                                 ||| threeCol
                                  ||| threeColMid
                                  ||| noBorders monocle
                                  ||| floats
@@ -294,11 +236,8 @@ myKeys =
     -- Workspaces
         , ("M-.", nextScreen)  -- Switch focus to next monitor
         , ("M-,", prevScreen)  -- Switch focus to prev monitor
-    --   , ("M-S-<KP_Add>", shiftTo Next nonNSP >> moveTo Next nonNSP)       -- Shifts focused window to next ws
-     --   , ("M-S-<KP_Subtract>", shiftTo Prev nonNSP >> moveTo Prev nonNSP)  -- Shifts focused window to prev ws
 
     -- Floating windows
-     --   , ("M-f", sendMessage (T.Toggle "Full"))
         , ("M-f", sendMessage (T.Toggle "floats")) -- Toggles my 'floats' layout
         , ("M-t", withFocused $ windows . W.sink)  -- Push floating window back to tile
         , ("M-S-t", sinkAll)                       -- Push ALL floating windows to tile
@@ -330,8 +269,6 @@ myKeys =
         , ("M-S-n", sendMessage $ MT.Toggle NOBORDERS)  -- Toggles noborder
         , ("M-<Space>", sendMessage (MT.Toggle NBFULL) >> sendMessage ToggleStruts) -- Toggles noborder/full
         , ("M-a", withFocused $ toggleFloat centreRect)
-        , ("M-c", windows copyToAll <> withFocused (enableFloat' videoRect))
-        , ("M-S-a", killAllOtherCopies <> withFocused disableFloat')
 
     -- Increase/decrease windows in the master pane or the stack
         , ("M-S-<Up>", sendMessage (IncMasterN 1))      -- Increase # of clients master pane
@@ -479,14 +416,11 @@ getNameCommand (NameApp  n c) = (n, c)
 getAppName    = fst . getNameCommand
 getAppCommand = snd . getNameCommand
 
---myEventHook = docksEventHook <+> fullscreenEventHook
-
-
 main :: IO ()
 main = do
 
     xmbar <- spawnPipe "xmobar $HOME/.config/xmobar/xmobar.hs"
-    xmonad $ ewmh def
+    xmonad . javaHack $ ewmh def
         { manageHook = manageDocks <+> myManageHook
         , handleEventHook    = docksEventHook <+> fullscreenEventHook
         , modMask            = myModMask
