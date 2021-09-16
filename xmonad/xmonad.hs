@@ -421,7 +421,8 @@ main = do
 
     xmbar <- spawnPipe "xmobar $HOME/.config/xmobar/xmobar.hs"
     xmonad . javaHack . ewmhFullscreen . ewmh $ def
-        { manageHook         = manageDocks <+> myManageHook
+        { manageHook = manageDocks <+> myManageHook
+        , handleEventHook    = docksEventHook
         , modMask            = myModMask
         , terminal           = myTerminal
         , startupHook        = myStartupHook
@@ -431,17 +432,17 @@ main = do
         , normalBorderColor  = myNormColor
         , focusedBorderColor = myFocusColor
         , logHook = dynamicLogWithPP $  filterOutWsPP [scratchpadWorkspaceTag] $ xmobarPP
-              { ppOutput = \x -> hPutStrLn xmbar x                              -- xmobar
+              { ppOutput = \x -> hPutStrLn xmbar x                                            -- xmobar
               , ppCurrent = xmobarColor "#71abeb" "" . xmobarBorder "Bottom"  myBorderColor 3 -- Current workspace
-              , ppVisible = xmobarColor "#5AB1BB" ""                            -- Visible but not current workspace
-              , ppHidden = xmobarColor "#e5c07b" "" . xmobarBorder "Bottom" "#e5c07b" 3-- . wrap "-" "-" . clickable  -- Hidden workspaces
-              , ppHiddenNoWindows = xmobarColor "#d6d5d5" ""                    -- Hidden workspaces (no windows)
-              , ppWsSep   = "  "                                                -- Workspaces separator
-              , ppTitle = xmobarColor "#9ec07c" "" . shorten 90                 -- Title of active window
-              , ppSep =  "<fc=#4b5363> <fn=1>|</fn> </fc>"                      -- Separator character
-              , ppUrgent = xmobarColor "#e06c75" "" . wrap "!" "!"              -- Urgent workspace
-              , ppExtras  = [windowCount]                                       -- # of windows current workspace
-              , ppOrder  = \(ws:l:t:ex) -> [ws,l]++ex++[t]                      -- order of things in xmobar
+              , ppVisible = xmobarColor "#5AB1BB" ""                                          -- Visible but not current workspace
+              , ppHidden = xmobarColor "#e5c07b" "" . xmobarBorder "Bottom" "#e5c07b" 3       -- Hidden workspaces
+              , ppHiddenNoWindows = xmobarColor "#d6d5d5" ""                                  -- Hidden workspaces (no windows)
+              , ppWsSep   = "  "                                                              -- Workspaces separator
+              , ppTitle = xmobarColor "#9ec07c" "" . shorten 90                               -- Title of active window
+              , ppSep =  "<fc=#4b5363> <fn=1>|</fn> </fc>"                                    -- Separator character
+              , ppUrgent = xmobarColor "#e06c75" "" . wrap "!" "!"                            -- Urgent workspace
+              , ppExtras  = [windowCount]                                                     -- # of windows current workspace
+              , ppOrder  = \(ws:l:t:ex) -> [ws,l]++ex++[t]                                    -- order of things in xmobar
               , ppLayout  = xmobarColor "#c678dd" "" .
                   ( \t -> case t of
                       "MouseResizableTile" -> "MRT"
