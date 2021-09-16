@@ -420,9 +420,8 @@ main :: IO ()
 main = do
 
     xmbar <- spawnPipe "xmobar $HOME/.config/xmobar/xmobar.hs"
-    xmonad . javaHack $ ewmh def
-        { manageHook = manageDocks <+> myManageHook
-        , handleEventHook    = docksEventHook <+> fullscreenEventHook
+    xmonad . javaHack . ewmhFullscreen . ewmh $ def
+        { manageHook         = manageDocks <+> myManageHook
         , modMask            = myModMask
         , terminal           = myTerminal
         , startupHook        = myStartupHook
