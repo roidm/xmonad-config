@@ -44,6 +44,7 @@ import           XMonad.Util.EZConfig
 import           XMonad.Util.Hacks
 import           XMonad.Util.NamedScratchpad
 import           XMonad.Util.Run
+import           XMonad.Util.Ungrab
 import           XMonad.Util.WorkspaceCompare
 
 ($.) :: (c -> d) -> (a -> b -> c) -> a -> b -> d
@@ -78,7 +79,6 @@ myNormColor   = "#282c34"   -- Border color of normal windows
 
 myFocusColor :: String
 myFocusColor  = "#4d78cc"   -- Border color of focused windows
--- myFocusColor  = "#98C379"
 
 myBorderColor :: String
 myBorderColor  = "#71abeb"
@@ -192,7 +192,7 @@ mrt = mouseResizableTile { draggerType = FixedDragger (fi gap) (fi gap) }
 applyGaps = gaps $ zip [U, D, R, L] $ repeat gap
 
 -- The layout hook
-myLayoutHook = avoidStruts $ mouseResize $ windowArrange $ T.toggleLayouts floats
+myLayoutHook = avoidStruts $ smartBorders $ mouseResize $ windowArrange $ T.toggleLayouts floats
                $ mkToggle (NBFULL ?? NOBORDERS ?? EOT) myDefaultLayout
              where
                myDefaultLayout =     withBorder myBorderWidth tall
@@ -288,6 +288,7 @@ myKeys =
 
     -- Scratchpads
         , ("M1-t",   namedScratchpadAction myScratchPads "terminal")
+        , ("M-S-<Return>", namedScratchpadAction myScratchPads "dropdown-term")
         , ("M1-S-t", namedScratchpadAction myScratchPads "term")
         , ("M1-r",   namedScratchpadAction myScratchPads "ranger")
         , ("M1-S-v", namedScratchpadAction myScratchPads "vlc")
@@ -420,9 +421,9 @@ main :: IO ()
 main = do
 
     xmbar <- spawnPipe "xmobar $HOME/.config/xmobar/xmobar.hs"
-    xmonad . javaHack . ewmhFullscreen . ewmh $ def
-        { manageHook = manageDocks <+> myManageHook
-        , handleEventHook    = docksEventHook
+    xmonad $ javaHack $ ewmhFullscreen $ ewmh $ docks def
+        { manageHook         = myManageHook
+        , handleEventHook    = handleEventHook def <+> fullscreenEventHook
         , modMask            = myModMask
         , terminal           = myTerminal
         , startupHook        = myStartupHook
