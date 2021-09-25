@@ -4,21 +4,27 @@ import           System.Exit
 import           System.IO
 import           XMonad
 import           XMonad.Actions.CycleWS
+import           XMonad.Actions.Minimize
 import           XMonad.Actions.MouseResize
 import           XMonad.Actions.Promote
 import           XMonad.Actions.RotSlaves
 import           XMonad.Actions.SpawnOn
 import           XMonad.Actions.WithAll
-import           XMonad.Hooks.DynamicLog
 import           XMonad.Hooks.EwmhDesktops
 import           XMonad.Hooks.InsertPosition
 import           XMonad.Hooks.ManageDocks
 import           XMonad.Hooks.ManageHelpers
+import           XMonad.Hooks.Minimize
+import           XMonad.Hooks.SetWMName
+import           XMonad.Hooks.StatusBar              (StatusBarConfig,
+                                                      statusBarProp, withSB)
+import           XMonad.Hooks.StatusBar.PP           hiding (trim)
 import qualified XMonad.Layout.Dwindle               as Dwindle
 import           XMonad.Layout.Gaps
-import           XMonad.Layout.Hidden
 import           XMonad.Layout.LayoutModifier
 import           XMonad.Layout.LimitWindows
+import           XMonad.Layout.Maximize
+import           XMonad.Layout.Minimize
 import           XMonad.Layout.MouseResizableTile
 import           XMonad.Layout.MultiToggle
 import qualified XMonad.Layout.MultiToggle           as MT
@@ -36,8 +42,10 @@ import           XMonad.Layout.WindowNavigation
 import           XMonad.Prelude                      (Endo, fromJust, isDigit,
                                                       isJust, isSpace, toUpper)
 import qualified XMonad.StackSet                     as W
+import           XMonad.Util.ClickableWorkspaces     (clickablePP)
 import           XMonad.Util.EZConfig
 import           XMonad.Util.Hacks
+import           XMonad.Util.Loggers                 (logTitles)
 import           XMonad.Util.NamedScratchpad
 import           XMonad.Util.Run
 import           XMonad.Util.WorkspaceCompare
@@ -70,6 +78,10 @@ centreRect =  W.RationalRect l t w h
     t = 0.9 -h
     l = 0.75 -w
 
+centerFloat :: X ()
+centerFloat = withFocused $ \win -> do
+    (_, W.RationalRect _ _ w h) <- floatLocation win
+    windows $ W.float win $ W.RationalRect ((1 - w) / 2) ((1 - h) / 2) w h
 
 isFloating :: Window -> WindowSet -> Bool
 isFloating w s = M.member w (W.floating s)
@@ -95,6 +107,7 @@ windowCount = gets $ Just . show . length . W.integrate' . W.stack . W.workspace
 myStartupHook :: X ()
 myStartupHook = do
     spawn "$HOME/.xmonad/scripts/autostart.sh"
+    setWMName "LG3D"
 
 
 ---------------------------------------------
@@ -146,25 +159,30 @@ mySpacing' :: Integer -> l a -> XMonad.Layout.LayoutModifier.ModifiedLayout Spac
 mySpacing' i = spacingRaw True (Border i i i i) True (Border i i i i) True
 
 tall        = renamed [Replace "tall"]
-            $ hiddenWindows
+            $ minimize
+            $ maximizeWithPadding 0
             $ limitWindows 12
             $ mySpacing 9
             $ ResizableTall 1 (1/100) (1/2) []
 dwindle     = renamed [Replace "dwindle"]
-            $ hiddenWindows
+            $ minimize
+            $ maximizeWithPadding 0
             $ mySpacing 9
             $ limitWindows 12
             $ Dwindle.Dwindle R Dwindle.CW (2/2) (11/10)
 monocle     = renamed [Replace "monocle"]
-            $ hiddenWindows
+            $ minimize
+            $ maximizeWithPadding 0
             $ limitWindows 20 Full
 threeColMid = renamed [Replace "|C|"]
-            $ hiddenWindows
+            $ minimize
+            $ maximizeWithPadding 0
             $ mySpacing' 9
             $ limitWindows 7
             $ ThreeColMid 1 (1/100) (1/2)
 floats      = renamed [Replace "floats"]
-            $ hiddenWindows
+            $ minimize
+            $ maximizeWithPadding 0
             $ limitWindows 20 simplestFloat
 
 
@@ -177,7 +195,7 @@ mrt = mouseResizableTile { draggerType = FixedDragger (fi gap) (fi gap) }
 applyGaps = gaps $ zip [U, D, R, L] $ repeat gap
 
 -- The layout hook
-myLayoutHook = avoidStruts $ smartBorders $ mouseResize $ windowArrange $ T.toggleLayouts floats
+myLayoutHook = smartBorders $ avoidStruts $ mouseResize $ windowArrange $ T.toggleLayouts floats
                $ mkToggle (NBFULL ?? NOBORDERS ?? EOT) myDefaultLayout
              where
                myDefaultLayout = tall
@@ -242,8 +260,8 @@ myKeys =
         , ("M-<Backspace>", promote)      -- Moves focused window to master, others maintain order
         , ("M-S-<Tab>", rotSlavesDown)    -- Rotate all windows except master and keep focus in place
         , ("M-C-<Tab>", rotAllDown)       -- Rotate all the windows in the current stack
-        , ("M-z", withFocused hideWindow)
-        , ("M-S-z", popOldestHiddenWindow)
+        , ("M-z", withFocused minimizeWindow)
+        , ("M-S-z",withLastMinimized maximizeWindowAndFocus)
 
     -- Layouts
         , ("M-<Tab>", sendMessage NextLayout)           -- Switch to next layout
@@ -253,6 +271,7 @@ myKeys =
         , ("M-S-n", sendMessage $ MT.Toggle NOBORDERS)  -- Toggles noborder
         , ("M-<Space>", sendMessage (MT.Toggle NBFULL) >> sendMessage ToggleStruts) -- Toggles noborder/full
         , ("M-a", withFocused $ toggleFloat centreRect)
+        , ("M-c",           centerFloat)
 
     -- Increase/decrease windows in the master pane or the stack
         , ("M-S-<Up>", sendMessage (IncMasterN 1))      -- Increase # of clients master pane
@@ -401,11 +420,34 @@ getNameCommand (NameApp  n c) = (n, c)
 getAppName    = fst . getNameCommand
 getAppCommand = snd . getNameCommand
 
+-------------------------------------------------------------------------
+-- XMOBAR CONFIGURATION
+-------------------------------------------------------------------------
+mainXmobarPP :: X PP
+mainXmobarPP = clickablePP . filterOutWsPP [scratchpadWorkspaceTag] $ def
+      { ppCurrent         = xmobarColor "#71abeb" "" . xmobarBorder "Bottom" "#71abeb" 3
+      , ppVisible         = xmobarColor "#5AB1BB" ""
+      , ppHidden          = xmobarColor "#e5c07b" "" . xmobarBorder "Bottom" "#e5c07b" 3
+      , ppHiddenNoWindows = xmobarColor "#d6d5d5" ""
+      , ppUrgent          = xmobarColor "#e06c75" "" . wrap "!" "!"
+      , ppTitle           = xmobarColor "#9ec07c" "" . shorten 90
+      , ppWsSep           = "  "
+      , ppLayout          = xmobarColor "#c678dd" ""
+      , ppSep             = "<fc=#4b5363> <fn=1>|</fn> </fc>"
+      , ppOrder           = \(ws : l : t : extras) -> [ws,l]++extras++[t]
+      , ppExtras          = [windowCount]
+      }
+
+-------------------------------------------------------------------------
+-- XMOBAR INSTANCES
+-------------------------------------------------------------------------
+xmobar0 :: StatusBarConfig
+xmobar0 = statusBarProp "xmobar ~/.config/xmobar/xmobar.hs" mainXmobarPP
+
 main :: IO ()
 main = do
 
-    xmbar <- spawnPipe "xmobar $HOME/.config/xmobar/xmobar.hs"
-    xmonad $ javaHack $ ewmhFullscreen $ ewmh $ docks def
+    xmonad . withSB xmobar0 . javaHack . ewmhFullscreen . ewmh $ docks def
         { manageHook         = myManageHook
         , handleEventHook    = handleEventHook def <+> fullscreenEventHook
         , modMask            = myModMask
@@ -416,22 +458,4 @@ main = do
         , borderWidth        = 5
         , normalBorderColor  = "#282c34"
         , focusedBorderColor = "#4d78cc"
-        , logHook = dynamicLogWithPP $  filterOutWsPP [scratchpadWorkspaceTag] $ xmobarPP
-              { ppOutput          = \x -> hPutStrLn xmbar x                                         -- xmobar
-              , ppCurrent         = xmobarColor "#71abeb" "" . xmobarBorder "Bottom" "#71abeb" 3   -- Current workspace
-              , ppVisible         = xmobarColor "#5AB1BB" ""                                        -- Visible but not current workspace
-              , ppHidden          = xmobarColor "#e5c07b" "" . xmobarBorder "Bottom" "#e5c07b" 3    -- Hidden workspaces
-              , ppHiddenNoWindows = xmobarColor "#d6d5d5" ""                                        -- Hidden workspaces (no windows)
-              , ppWsSep           = "  "                                                            -- Workspaces separator
-              , ppTitle           = xmobarColor "#9ec07c" "" . shorten 90                           -- Title of active window
-              , ppSep             = "<fc=#4b5363> <fn=1>|</fn> </fc>"                               -- Separator character
-              , ppUrgent          = xmobarColor "#e06c75" "" . wrap "!" "!"                         -- Urgent workspace
-              , ppExtras          = [windowCount]                                                   -- # of windows current workspace
-              , ppOrder           = \(ws:l:t:ex) -> [ws,l]++ex++[t]                                 -- order of things in xmobar
-              , ppLayout          = xmobarColor "#c678dd" "" .
-                  ( \t -> case t of
-                      "MouseResizableTile" -> "MRT"
-                      _                    -> t
-                  )
-              }
         } `additionalKeysP` myKeys
