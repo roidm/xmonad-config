@@ -3,18 +3,23 @@ import           System.Directory
 import           System.Exit
 import           System.IO
 import           XMonad
+import           XMonad.Actions.CycleRecentWS        (toggleRecentWS)
 import           XMonad.Actions.CycleWS
+import           XMonad.Actions.GroupNavigation      (Direction (History),
+                                                      historyHook, nextMatch)
 import           XMonad.Actions.Minimize
 import           XMonad.Actions.MouseResize
 import           XMonad.Actions.Promote
 import           XMonad.Actions.RotSlaves
 import           XMonad.Actions.SpawnOn
+import           XMonad.Actions.UpdatePointer        (updatePointer)
 import           XMonad.Actions.WithAll
 import           XMonad.Hooks.EwmhDesktops
 import           XMonad.Hooks.InsertPosition
 import           XMonad.Hooks.ManageDocks
 import           XMonad.Hooks.ManageHelpers
 import           XMonad.Hooks.Minimize
+import           XMonad.Hooks.RefocusLast            (refocusLastLogHook)
 import           XMonad.Hooks.SetWMName
 import           XMonad.Hooks.StatusBar              (StatusBarConfig,
                                                       statusBarProp, withSB)
@@ -48,7 +53,7 @@ import           XMonad.Util.Hacks
 import           XMonad.Util.Loggers                 (logTitles)
 import           XMonad.Util.NamedScratchpad
 import           XMonad.Util.Run
-import           XMonad.Util.WorkspaceCompare
+
 ($.) :: (c -> d) -> (a -> b -> c) -> a -> b -> d
 ($.) = (.) . (.)
 
@@ -89,14 +94,8 @@ isFloating w s = M.member w (W.floating s)
 enableFloat :: W.RationalRect -> Window -> (WindowSet -> WindowSet)
 enableFloat = flip W.float
 
-enableFloat' :: W.RationalRect -> Window -> X ()
-enableFloat' = windows $. enableFloat
-
 disableFloat :: Window -> (WindowSet -> WindowSet)
 disableFloat = W.sink
-
-disableFloat' :: Window -> X ()
-disableFloat' = windows . disableFloat
 
 toggleFloat :: W.RationalRect -> Window -> X ()
 toggleFloat r = windows . if2 isFloating disableFloat (enableFloat r)
@@ -108,7 +107,6 @@ myStartupHook :: X ()
 myStartupHook = do
     spawn "$HOME/.xmonad/scripts/autostart.sh"
     setWMName "LG3D"
-
 
 ---------------------------------------------
 ----Scratchpads
@@ -152,39 +150,9 @@ myScratchPads =  [ NS "terminal" "st -c terminal"                    (className 
                         discordHook       = nearFullFloat2
                         mpvHook           = nearFullFloat
 
-mySpacing :: Integer -> l a -> XMonad.Layout.LayoutModifier.ModifiedLayout Spacing l a
-mySpacing i = spacingRaw False (Border i i i i) True (Border i i i i) True
-
-mySpacing' :: Integer -> l a -> XMonad.Layout.LayoutModifier.ModifiedLayout Spacing l a
-mySpacing' i = spacingRaw True (Border i i i i) True (Border i i i i) True
-
-tall        = renamed [Replace "tall"]
-            $ minimize
-            $ maximizeWithPadding 0
-            $ limitWindows 12
-            $ mySpacing 9
-            $ ResizableTall 1 (1/100) (1/2) []
-dwindle     = renamed [Replace "dwindle"]
-            $ minimize
-            $ maximizeWithPadding 0
-            $ mySpacing 9
-            $ limitWindows 12
-            $ Dwindle.Dwindle R Dwindle.CW (2/2) (11/10)
-monocle     = renamed [Replace "monocle"]
-            $ minimize
-            $ maximizeWithPadding 0
-            $ limitWindows 20 Full
-threeColMid = renamed [Replace "|C|"]
-            $ minimize
-            $ maximizeWithPadding 0
-            $ mySpacing' 9
-            $ limitWindows 7
-            $ ThreeColMid 1 (1/100) (1/2)
-floats      = renamed [Replace "floats"]
-            $ minimize
-            $ maximizeWithPadding 0
-            $ limitWindows 20 simplestFloat
-
+---------------------
+-- The layout hook --
+---------------------
 
 gap :: Int
 gap = 18
@@ -194,7 +162,37 @@ fi = fromIntegral
 mrt = mouseResizableTile { draggerType = FixedDragger (fi gap) (fi gap) }
 applyGaps = gaps $ zip [U, D, R, L] $ repeat gap
 
--- The layout hook
+-- Gaps bewteen windows
+myGaps gap  = gaps [(U, gap),(D, gap),(L, gap),(R, gap)]
+gapSpaced g = spacing g . myGaps g
+
+tall        = renamed [Replace "tall"]
+            $ minimize
+            $ maximizeWithPadding 0
+            $ limitWindows 12
+            $ gapSpaced 9
+            $ ResizableTall 1 (1/100) (1/2) []
+dwindle     = renamed [Replace "dwindle"]
+            $ minimize
+            $ maximizeWithPadding 0
+            $ gapSpaced 9
+            $ limitWindows 12
+            $ Dwindle.Dwindle R Dwindle.CW (2/2) (11/10)
+monocle     = renamed [Replace "monocle"]
+            $ minimize
+            $ maximizeWithPadding 0
+            $ limitWindows 20 Full
+threeColMid = renamed [Replace "|C|"]
+            $ minimize
+            $ maximizeWithPadding 0
+            $ gapSpaced 9
+            $ limitWindows 7
+            $ ThreeColMid 1 (1/100) (1/2)
+floats      = renamed [Replace "floats"]
+            $ minimize
+            $ maximizeWithPadding 0
+            $ limitWindows 20 simplestFloat
+
 myLayoutHook = smartBorders $ avoidStruts $ mouseResize $ windowArrange $ T.toggleLayouts floats
                $ mkToggle (NBFULL ?? NOBORDERS ?? EOT) myDefaultLayout
              where
@@ -205,19 +203,17 @@ myLayoutHook = smartBorders $ avoidStruts $ mouseResize $ windowArrange $ T.togg
                                  ||| noBorders monocle
                                  ||| floats
 
-xmobarEscape = concatMap doubleLts
-  where doubleLts '<' = "<<"
-        doubleLts x   = [x]
+------------------
+--- Workspaces ---
+------------------
 
-myWorkspaces :: [String]
-myWorkspaces = clickable . (map xmobarEscape) $ ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
-
-   where
-         clickable l = [ "<action=xdotool key super+" ++ show (n) ++ ">" ++ ws ++ "</action>" |
-                             (i,ws) <- zip [1..9] l,
-                            let n = i ]
+myWorkspaces :: [WorkspaceId]
+myWorkspaces =  ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
 
 
+------------------
+------ Keys ------
+------------------
 
 myKeys :: [(String, X ())]
 myKeys =
@@ -262,6 +258,8 @@ myKeys =
         , ("M-C-<Tab>", rotAllDown)       -- Rotate all the windows in the current stack
         , ("M-z", withFocused minimizeWindow)
         , ("M-S-z",withLastMinimized maximizeWindowAndFocus)
+        , ("M-r", toggleRecentWS)
+        , ("M1-r", nextMatch History (return True))
 
     -- Layouts
         , ("M-<Tab>", sendMessage NextLayout)           -- Switch to next layout
@@ -293,7 +291,7 @@ myKeys =
         , ("M1-t",   namedScratchpadAction myScratchPads "terminal")
         , ("M-S-<Return>", namedScratchpadAction myScratchPads "dropdown-term")
         , ("M1-S-t", namedScratchpadAction myScratchPads "term")
-        , ("M1-r",   namedScratchpadAction myScratchPads "ranger")
+        , ("M1-S-r",   namedScratchpadAction myScratchPads "ranger")
         , ("M1-S-v", namedScratchpadAction myScratchPads "vlc")
         , ("M1-C-t", namedScratchpadAction myScratchPads "Telegram")
         , ("M1-o",   namedScratchpadAction myScratchPads "obs")
@@ -343,6 +341,9 @@ myMouseBindings XConfig {XMonad.modMask = modm} = M.fromList
     -- you may also bind events to the mouse scroll wheel (button4 and button5)
     ]
 
+--------------------------
+--- Window / App Rules ---
+--------------------------
 
 type AppName      = String
 type AppTitle     = String
@@ -369,7 +370,7 @@ obs       = ClassApp "Obs"                  "obs"
 about     = TitleApp "About Mozilla Firefox" "About Mozilla Firefox"
 picture   = TitleApp "Picture-in-Picture"    "Picture-in-Picture"
 gcolor    = TitleApp "gcolor2"               "gcolor2"
-iwarp      = TitleApp "IWarp"                "IWarp"
+iwarp     = TitleApp "IWarp"                "IWarp"
 
 myManageHook = manageApps <+> manageSpawn <+> namedScratchpadManageHook myScratchPads
  where
@@ -420,11 +421,12 @@ getNameCommand (NameApp  n c) = (n, c)
 getAppName    = fst . getNameCommand
 getAppCommand = snd . getNameCommand
 
--------------------------------------------------------------------------
--- XMOBAR CONFIGURATION
--------------------------------------------------------------------------
-mainXmobarPP :: X PP
-mainXmobarPP = clickablePP . filterOutWsPP [scratchpadWorkspaceTag] $ def
+--------------------------
+-- XMOBAR CONFIGURATION --
+--------------------------
+
+myXmobarPP :: X PP
+myXmobarPP = clickablePP . filterOutWsPP [scratchpadWorkspaceTag] $ def
       { ppCurrent         = xmobarColor "#71abeb" "" . xmobarBorder "Bottom" "#71abeb" 3
       , ppVisible         = xmobarColor "#5AB1BB" ""
       , ppHidden          = xmobarColor "#e5c07b" "" . xmobarBorder "Bottom" "#e5c07b" 3
@@ -438,22 +440,27 @@ mainXmobarPP = clickablePP . filterOutWsPP [scratchpadWorkspaceTag] $ def
       , ppExtras          = [windowCount]
       }
 
--------------------------------------------------------------------------
--- XMOBAR INSTANCES
--------------------------------------------------------------------------
+----------------------
+-- XMOBAR INSTANCES --
+----------------------
 xmobar0 :: StatusBarConfig
-xmobar0 = statusBarProp "xmobar ~/.config/xmobar/xmobar.hs" mainXmobarPP
+xmobar0 = statusBarProp "xmobar ~/.config/xmobar/xmobar.hs" myXmobarPP
+
+---------------------
+------- Main --------
+---------------------
 
 main :: IO ()
 main = do
 
-    xmonad . withSB xmobar0 . javaHack . ewmhFullscreen . ewmh $ docks def
+    xmonad . docks . withSB xmobar0 . javaHack . ewmhFullscreen . ewmh $ def
         { manageHook         = myManageHook
         , handleEventHook    = handleEventHook def <+> fullscreenEventHook
         , modMask            = myModMask
         , terminal           = myTerminal
         , startupHook        = myStartupHook
         , layoutHook         = myLayoutHook
+        , logHook            = updatePointer (0.5, 0.5) (0, 0) <> historyHook <> refocusLastLogHook
         , workspaces         = myWorkspaces
         , borderWidth        = 5
         , normalBorderColor  = "#282c34"
