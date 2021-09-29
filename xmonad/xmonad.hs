@@ -3,27 +3,25 @@ import           System.Directory
 import           System.Exit
 import           System.IO
 import           XMonad
-import           XMonad.Actions.CycleRecentWS        (toggleRecentWS)
+import           XMonad.Actions.CycleRecentWS
 import           XMonad.Actions.CycleWS
-import           XMonad.Actions.GroupNavigation      (Direction (History),
-                                                      historyHook, nextMatch)
+import           XMonad.Actions.GroupNavigation
 import           XMonad.Actions.Minimize
 import           XMonad.Actions.MouseResize
 import           XMonad.Actions.Promote
 import           XMonad.Actions.RotSlaves
 import           XMonad.Actions.SpawnOn
-import           XMonad.Actions.UpdatePointer        (updatePointer)
+import           XMonad.Actions.UpdatePointer
 import           XMonad.Actions.WithAll
 import           XMonad.Hooks.EwmhDesktops
 import           XMonad.Hooks.InsertPosition
 import           XMonad.Hooks.ManageDocks
 import           XMonad.Hooks.ManageHelpers
 import           XMonad.Hooks.Minimize
-import           XMonad.Hooks.RefocusLast            (refocusLastLogHook)
+import           XMonad.Hooks.RefocusLast
 import           XMonad.Hooks.SetWMName
-import           XMonad.Hooks.StatusBar              (StatusBarConfig,
-                                                      statusBarProp, withSB)
-import           XMonad.Hooks.StatusBar.PP           hiding (trim)
+import           XMonad.Hooks.StatusBar
+import           XMonad.Hooks.StatusBar.PP
 import qualified XMonad.Layout.Dwindle               as Dwindle
 import           XMonad.Layout.Gaps
 import           XMonad.Layout.LayoutModifier
@@ -47,10 +45,10 @@ import           XMonad.Layout.WindowNavigation
 import           XMonad.Prelude                      (Endo, fromJust, isDigit,
                                                       isJust, isSpace, toUpper)
 import qualified XMonad.StackSet                     as W
-import           XMonad.Util.ClickableWorkspaces     (clickablePP)
+import           XMonad.Util.ClickableWorkspaces
 import           XMonad.Util.EZConfig
 import           XMonad.Util.Hacks
-import           XMonad.Util.Loggers                 (logTitles)
+import           XMonad.Util.Loggers
 import           XMonad.Util.NamedScratchpad
 import           XMonad.Util.Run
 
@@ -325,6 +323,8 @@ myKeys =
         , ("<Print>", spawn "screenshot")
         ]
 
+-- Mouse bindings
+
 myMouseBindings XConfig {XMonad.modMask = modm} = M.fromList
 
     -- mod-button1, Set the window to floating mode and move by dragging
@@ -340,7 +340,6 @@ myMouseBindings XConfig {XMonad.modMask = modm} = M.fromList
 
     -- you may also bind events to the mouse scroll wheel (button4 and button5)
     ]
-
 --------------------------
 --- Window / App Rules ---
 --------------------------
@@ -437,14 +436,14 @@ myXmobarPP = clickablePP . filterOutWsPP [scratchpadWorkspaceTag] $ def
       , ppLayout          = xmobarColor "#c678dd" ""
       , ppSep             = "<fc=#4b5363> <fn=1>|</fn> </fc>"
       , ppOrder           = \(ws : l : t : extras) -> [ws,l]++extras++[t]
-      , ppExtras          = [windowCount]
+      , ppExtras          = [ xmobarColorL "#5AB1BB" "#1A1B26" windowCount]
       }
 
 ----------------------
 -- XMOBAR INSTANCES --
 ----------------------
 xmobar0 :: StatusBarConfig
-xmobar0 = statusBarProp "xmobar ~/.config/xmobar/xmobar.hs" myXmobarPP
+xmobar0 = statusBarProp "xmobar ~/.xmonad/xmobar.hs" myXmobarPP
 
 ---------------------
 ------- Main --------
@@ -457,6 +456,7 @@ main = do
         { manageHook         = myManageHook
         , handleEventHook    = handleEventHook def <+> fullscreenEventHook
         , modMask            = myModMask
+        , mouseBindings      = myMouseBindings
         , terminal           = myTerminal
         , startupHook        = myStartupHook
         , layoutHook         = myLayoutHook
