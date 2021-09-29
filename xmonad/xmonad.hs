@@ -148,21 +148,18 @@ myScratchPads =  [ NS "terminal" "st -c terminal"                    (className 
                         discordHook       = nearFullFloat2
                         mpvHook           = nearFullFloat
 
----------------------
--- The layout hook --
----------------------
+-- Gaps bewteen windows
+myGaps gap  = gaps [(U, gap),(D, gap),(L, gap),(R, gap)]
+gapSpaced g = spacing g . myGaps g
 
+-- MouseResizableTile Gaps
 gap :: Int
 gap = 18
 
 fi = fromIntegral
-
-mrt = mouseResizableTile { draggerType = FixedDragger (fi gap) (fi gap) }
 applyGaps = gaps $ zip [U, D, R, L] $ repeat gap
 
--- Gaps bewteen windows
-myGaps gap  = gaps [(U, gap),(D, gap),(L, gap),(R, gap)]
-gapSpaced g = spacing g . myGaps g
+-- The layout hook --
 
 tall        = renamed [Replace "tall"]
             $ minimize
@@ -176,16 +173,22 @@ dwindle     = renamed [Replace "dwindle"]
             $ gapSpaced 9
             $ limitWindows 12
             $ Dwindle.Dwindle R Dwindle.CW (2/2) (11/10)
-monocle     = renamed [Replace "monocle"]
+mrt         = renamed [Replace "MRT"]
+            $ applyGaps
             $ minimize
             $ maximizeWithPadding 0
-            $ limitWindows 20 Full
+            $ mouseResizableTile { draggerType = FixedDragger (fi gap) (fi gap) }
 threeColMid = renamed [Replace "|C|"]
             $ minimize
             $ maximizeWithPadding 0
             $ gapSpaced 9
             $ limitWindows 7
             $ ThreeColMid 1 (1/100) (1/2)
+monocle     = renamed [Replace "monocle"]
+            $ noBorders
+            $ minimize
+            $ maximizeWithPadding 0
+            $ limitWindows 20 Full
 floats      = renamed [Replace "floats"]
             $ minimize
             $ maximizeWithPadding 0
@@ -194,12 +197,7 @@ floats      = renamed [Replace "floats"]
 myLayoutHook = smartBorders $ avoidStruts $ mouseResize $ windowArrange $ T.toggleLayouts floats
                $ mkToggle (NBFULL ?? NOBORDERS ?? EOT) myDefaultLayout
              where
-               myDefaultLayout = tall
-                                 ||| dwindle
-                                 ||| avoidStruts (applyGaps mrt)
-                                 ||| threeColMid
-                                 ||| noBorders monocle
-                                 ||| floats
+               myDefaultLayout = tall ||| dwindle ||| mrt ||| threeColMid ||| monocle ||| floats
 
 ------------------
 --- Workspaces ---
