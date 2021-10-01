@@ -101,6 +101,10 @@ toggleFloat r = windows . if2 isFloating disableFloat (enableFloat r)
 windowCount :: X (Maybe String)
 windowCount = gets $ Just . show . length . W.integrate' . W.stack . W.workspace . W.current . windowset
 
+minimizedWindows = withMinimized return
+restoreAll = mapM_ maximizeWindowAndFocus
+restoreAllMinimized = minimizedWindows >>= restoreAll
+
 myStartupHook :: X ()
 myStartupHook = do
     spawn "$HOME/.xmonad/scripts/autostart.sh"
@@ -254,6 +258,7 @@ myKeys =
         , ("M-C-<Tab>", rotAllDown)       -- Rotate all the windows in the current stack
         , ("M-z", withFocused minimizeWindow)
         , ("M-S-z",withLastMinimized maximizeWindowAndFocus)
+        , ("M1-S-z", restoreAllMinimized)
         , ("M-r", toggleRecentWS)
         , ("M1-r", nextMatch History (return True))
 
