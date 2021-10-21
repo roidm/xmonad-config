@@ -22,7 +22,6 @@ import           XMonad.Hooks.RefocusLast
 import           XMonad.Hooks.SetWMName
 import           XMonad.Hooks.StatusBar
 import           XMonad.Hooks.StatusBar.PP
-import qualified XMonad.Layout.Dwindle               as Dwindle
 import           XMonad.Layout.Gaps
 import           XMonad.Layout.LayoutModifier
 import           XMonad.Layout.LimitWindows
@@ -51,9 +50,6 @@ import           XMonad.Util.Hacks
 import           XMonad.Util.Loggers
 import           XMonad.Util.NamedScratchpad
 import           XMonad.Util.Run
-
-($.) :: (c -> d) -> (a -> b -> c) -> a -> b -> d
-($.) = (.) . (.)
 
 if2 :: (a -> b -> Bool) -> (a -> b -> c) -> (a -> b -> c) -> a -> b -> c
 if2 p f g x y = if p x y then f x y else g x y
@@ -171,12 +167,6 @@ tall        = renamed [Replace "tall"]
             $ limitWindows 12
             $ gapSpaced 9
             $ ResizableTall 1 (1/100) (1/2) []
-dwindle     = renamed [Replace "dwindle"]
-            $ minimize
-            $ maximizeWithPadding 0
-            $ gapSpaced 9
-            $ limitWindows 12
-            $ Dwindle.Dwindle R Dwindle.CW (2/2) (11/10)
 mrt         = renamed [Replace "MRT"]
             $ applyGaps
             $ minimize
@@ -201,14 +191,14 @@ floats      = renamed [Replace "floats"]
 myLayoutHook = smartBorders $ avoidStruts $ mouseResize $ windowArrange $ T.toggleLayouts floats
                $ mkToggle (NBFULL ?? NOBORDERS ?? EOT) myDefaultLayout
              where
-               myDefaultLayout = tall ||| dwindle ||| mrt ||| threeColMid ||| monocle ||| floats
+               myDefaultLayout = tall ||| mrt ||| threeColMid ||| monocle ||| floats
 
 ------------------
 --- Workspaces ---
 ------------------
 
 myWorkspaces :: [WorkspaceId]
-myWorkspaces =  ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
+myWorkspaces =  [" 1 ", " 2 ", " 3 ", " 4 ", " 5 ", " 6 ", " 7 ", " 8 ", " 9 "]
 
 
 ------------------
@@ -223,12 +213,12 @@ myKeys =
         , ("M-S-q", io exitSuccess)              -- Quits xmonad
 
     --  Terminal, Browser, Htop
-        , ("M-<Return>", spawn (myTerminal ++ " -e zsh"))
+        , ("M-<Return>",  spawn (myTerminal ++ " -e zsh"))
         , ("M1-<Return>", spawn ("alacritty"))
-        , ("M-b", spawn (myBrowser))
+        , ("M-b",         spawn (myBrowser))
 
     -- Kill windows
-        , ("M-q", kill)     -- Kill the currently focused client
+        , ("M-q",   kill)     -- Kill the currently focused client
         , ("M-S-a", killAll)   -- Kill all windows on current workspace
 
     -- Workspaces
@@ -236,63 +226,62 @@ myKeys =
         , ("M-,", prevScreen)  -- Switch focus to prev monitor
 
     -- Floating windows
-        , ("M-f", sendMessage (T.Toggle "floats")) -- Toggles my 'floats' layout
-        , ("M-t", withFocused $ windows . W.sink)  -- Push floating window back to tile
+        , ("M-f",   sendMessage (T.Toggle "floats")) -- Toggles my 'floats' layout
+        , ("M-t",   withFocused $ windows . W.sink)  -- Push floating window back to tile
         , ("M-S-t", sinkAll)                       -- Push ALL floating windows to tile
 
     -- Increase/decrease spacing (gaps)
-        , ("M-d", decWindowSpacing 4)           -- Decrease window spacing
-        , ("M-i", incWindowSpacing 4)           -- Increase window spacing
+        , ("M-d",   decWindowSpacing 4)           -- Decrease window spacing
+        , ("M-i",   incWindowSpacing 4)           -- Increase window spacing
         , ("M-S-d", decScreenSpacing 4)         -- Decrease screen spacing
         , ("M-S-i", incScreenSpacing 4)         -- Increase screen spacing
 
     -- Windows navigation
-        , ("M-m", windows W.focusMaster)  -- Move focus to the master window
-        , ("M-j", windows W.focusDown)    -- Move focus to the next window
-        , ("M-k", windows W.focusUp)      -- Move focus to the prev window
-        , ("M-S-m", windows W.swapMaster) -- Swap the focused window and the master window
-        , ("M-S-j", windows W.swapDown)   -- Swap focused window with next window
-        , ("M-S-k", windows W.swapUp)     -- Swap focused window with prev window
+        , ("M-m",           windows W.focusMaster)  -- Move focus to the master window
+        , ("M-j",           windows W.focusDown)    -- Move focus to the next window
+        , ("M-k",           windows W.focusUp)      -- Move focus to the prev window
+        , ("M-S-m",         windows W.swapMaster) -- Swap the focused window and the master window
+        , ("M-S-j",         windows W.swapDown)   -- Swap focused window with next window
+        , ("M-S-k",         windows W.swapUp)     -- Swap focused window with prev window
         , ("M-<Backspace>", promote)      -- Moves focused window to master, others maintain order
-        , ("M-S-<Tab>", rotSlavesDown)    -- Rotate all windows except master and keep focus in place
-        , ("M-C-<Tab>", rotAllDown)       -- Rotate all the windows in the current stack
-        , ("M-z", withFocused minimizeWindow)
-        , ("M-S-z",withLastMinimized maximizeWindowAndFocus)
-        , ("M1-S-z", restoreAllMinimized)
-        , ("M-r", toggleRecentWS)
-        , ("M1-r", nextMatch History (return True))
+        , ("M-S-<Tab>",     rotSlavesDown)    -- Rotate all windows except master and keep focus in place
+        , ("M-C-<Tab>",     rotAllDown)       -- Rotate all the windows in the current stack
+        , ("M-z",           withFocused minimizeWindow)
+        , ("M-S-z",         withLastMinimized maximizeWindowAndFocus)
+        , ("M1-S-z",        restoreAllMinimized)
+        , ("M-r",           toggleRecentWS)
+        , ("M1-r",          nextMatch History (return True))
 
     -- Layouts
-        , ("M-<Tab>", sendMessage NextLayout)           -- Switch to next layout
-        , ("M-C-M1-<Up>", sendMessage Arrange)
+        , ("M-<Tab>",       sendMessage NextLayout)           -- Switch to next layout
+        , ("M-C-M1-<Up>",   sendMessage Arrange)
         , ("M-C-M1-<Down>", sendMessage DeArrange)
-        , ("M-S-<Space>", sendMessage ToggleStruts)     -- Toggles struts
-        , ("M-S-n", sendMessage $ MT.Toggle NOBORDERS)  -- Toggles noborder
-        , ("M-<Space>", sendMessage (MT.Toggle NBFULL) >> sendMessage ToggleStruts) -- Toggles noborder/full
-        , ("M-a", withFocused $ toggleFloat centreRect)
+        , ("M-S-<Space>",   sendMessage ToggleStruts)     -- Toggles struts
+        , ("M-S-n",         sendMessage $ MT.Toggle NOBORDERS)  -- Toggles noborder
+        , ("M-<Space>",     sendMessage (MT.Toggle NBFULL) >> sendMessage ToggleStruts) -- Toggles noborder/full
+        , ("M-a",           withFocused $ toggleFloat centreRect)
         , ("M-c",           centerFloat)
 
     -- Increase/decrease windows in the master pane or the stack
-        , ("M-S-<Up>", sendMessage (IncMasterN 1))      -- Increase # of clients master pane
+        , ("M-S-<Up>",   sendMessage (IncMasterN 1))      -- Increase # of clients master pane
         , ("M-S-<Down>", sendMessage (IncMasterN (-1))) -- Decrease # of clients master pane
-        , ("M-C-<Up>", increaseLimit)                   -- Increase # of windows
+        , ("M-C-<Up>",   increaseLimit)                   -- Increase # of windows
         , ("M-C-<Down>", decreaseLimit)                 -- Decrease # of windows
 
     -- Window resizing
-        , ("M-h", sendMessage Shrink)                   -- Shrink horiz window width
-        , ("M-l", sendMessage Expand)                   -- Expand horiz window width
+        , ("M-h",    sendMessage Shrink)                   -- Shrink horiz window width
+        , ("M-l",    sendMessage Expand)                   -- Expand horiz window width
         , ("M-M1-j", sendMessage MirrorShrink)          -- Shrink vert window width
         , ("M-M1-k", sendMessage MirrorExpand)          -- Exoand vert window width
 
     ---- Rofi and Dmenu Scripts
-        , ("C-<Space>", spawn "rofi -show drun")
-        , ("M1-<Space>", spawn "dmenu_run -sb '#4d78cc' -p 'Run: '")
+        , ("C-<Space>",  spawn "rofi -show drun")
+        , ("M1-<Space>", spawn "dmenu_run -sb '#c547dd' -sf '#1a1b26'-p 'Run: '")
 
     -- Scratchpads
         , ("M1-t",   namedScratchpadAction myScratchPads "terminal")
-        , ("M-S-<Return>", namedScratchpadAction myScratchPads "dropdown-term")
         , ("M1-S-t", namedScratchpadAction myScratchPads "term")
-        , ("M1-S-r",   namedScratchpadAction myScratchPads "ranger")
+        , ("M1-S-r", namedScratchpadAction myScratchPads "ranger")
         , ("M1-S-v", namedScratchpadAction myScratchPads "vlc")
         , ("M1-C-t", namedScratchpadAction myScratchPads "Telegram")
         , ("M1-o",   namedScratchpadAction myScratchPads "obs")
@@ -310,20 +299,20 @@ myKeys =
 
     --- My Applications
         , ("M1-S-d", spawn "gnome-disks")
-        , ("M1-f", spawn "thunar")
-        , ("M1-g", spawn "gthumb")
-        , ("M1-S-m", spawn "gnome-system-monitor")
-        , ("M1-v", spawn (myTerminal ++ (" -e lvim ")))
+        , ("M1-f",   spawn "pcmanfm")
+        , ("M1-g",   spawn "gthumb")
+        , ("M1-S-m", spawn "xfce4-taskmanager")
+        , ("M1-v",   spawn (myTerminal ++ (" -e lvim ")))
 
     -- Multimedia Keys
-        , ("<XF86AudioPlay>", spawn "playerctl play-pause")
-        , ("<XF86AudioPrev>", spawn "playerctl previous")
-        , ("<XF86AudioNext>", spawn "playerctl next")
-        , ("<XF86AudioMute>",   spawn "pactl set-sink-mute @DEFAULT_SINK@ toggle")
+        , ("<XF86AudioPlay>",        spawn "playerctl play-pause")
+        , ("<XF86AudioPrev>",        spawn "playerctl previous")
+        , ("<XF86AudioNext>",        spawn "playerctl next")
+        , ("<XF86AudioMute>",        spawn "pactl set-sink-mute @DEFAULT_SINK@ toggle")
         , ("<XF86AudioLowerVolume>", spawn "pactl set-sink-volume @DEFAULT_SINK@ -5%")
         , ("<XF86AudioRaiseVolume>", spawn "pactl set-sink-volume @DEFAULT_SINK@ +5%")
-        , ("<XF86HomePage>", spawn "firefox")
-        , ("<Print>", spawn "screenshot")
+        , ("<XF86HomePage>",         spawn "firefox")
+        , ("<Print>",                spawn "screenshot")
         ]
 
 -- Mouse bindings
@@ -371,7 +360,7 @@ yad       = ClassApp "Yad"                  "yad --text-info --text 'XMonad'"
 obs       = ClassApp "Obs"                  "obs"
 about     = TitleApp "About Mozilla Firefox" "About Mozilla Firefox"
 picture   = TitleApp "Picture-in-Picture"    "Picture-in-Picture"
-gcolor    = TitleApp "gcolor2"               "gcolor2"
+gcolor    = TitleApp "Color Picker"               "Color Picker"
 iwarp     = TitleApp "IWarp"                "IWarp"
 
 myManageHook = manageApps <+> manageSpawn <+> namedScratchpadManageHook myScratchPads
@@ -429,17 +418,18 @@ getAppCommand = snd . getNameCommand
 
 myXmobarPP :: X PP
 myXmobarPP = clickablePP . filterOutWsPP [scratchpadWorkspaceTag] $ def
-      { ppCurrent         = xmobarColor "#71abeb" "" . xmobarBorder "Bottom" "#71abeb" 3
-      , ppVisible         = xmobarColor "#5AB1BB" ""
-      , ppHidden          = xmobarColor "#e5c07b" "" . xmobarBorder "Bottom" "#e5c07b" 3
-      , ppHiddenNoWindows = xmobarColor "#d6d5d5" ""
-      , ppUrgent          = xmobarColor "#e06c75" "" . wrap "!" "!"
-      , ppTitle           = xmobarColor "#9ec07c" "" . shorten 90
-      , ppWsSep           = "  "
-      , ppLayout          = xmobarColor "#c678dd" ""
-      , ppSep             = "<fc=#4b5363> <fn=1>|</fn> </fc>"
-      , ppOrder           = \(ws : l : t : extras) -> [ws,l]++extras++[t]
-      , ppExtras          = [ xmobarColorL "#5AB1BB" "#1A1B26" windowCount]
+      { ppCurrent          = xmobarColor "#c574dd" "#21232a:3" . wrap "<box type=Bottom offset=C5 width=3 color=#c574dd>" "</box>"  -- xmobarBorder "VBoth" "#21232a" 4
+      , ppVisible          = xmobarColor "#a9b1d6" ""
+      , ppHidden           = xmobarColor "#E0AF68" "" -- . xmobarBorder "Bottom" "#282c34" 3
+      , ppVisibleNoWindows = Just (xmobarColor "#a9b1d6" "")
+      , ppHiddenNoWindows  = xmobarColor "#a9b1d6" ""
+      , ppUrgent           = xmobarColor "#F7768E" "" . wrap "!" "!"
+      , ppTitle            = xmobarColor "#9ECE6A" "" . shorten 90
+      , ppWsSep            = ""
+      , ppLayout           = xmobarColor "#C574DD" ""
+      , ppSep              = "<fc=#282c34> <fn=1>|</fn> </fc>"
+      , ppOrder            = \(ws : l : t : extras) -> [ws,l]++extras++[t]
+      , ppExtras           = [ xmobarColorL "#4ABAAF" "#1A1B26" windowCount]
       }
 
 ----------------------
@@ -457,7 +447,6 @@ main = do
 
     xmonad . docks . withSB xmobar0 . javaHack . ewmhFullscreen . ewmh $ def
         { manageHook         = myManageHook
-        , handleEventHook    = handleEventHook def <+> fullscreenEventHook
         , modMask            = myModMask
         , mouseBindings      = myMouseBindings
         , terminal           = myTerminal
@@ -465,7 +454,7 @@ main = do
         , layoutHook         = myLayoutHook
         , logHook            = updatePointer (0.5, 0.5) (0, 0) <> historyHook <> refocusLastLogHook
         , workspaces         = myWorkspaces
-        , borderWidth        = 5
+        , borderWidth        = 6
         , normalBorderColor  = "#282c34"
-        , focusedBorderColor = "#4d78cc"
+        , focusedBorderColor = "#c574dd"
         } `additionalKeysP` myKeys
