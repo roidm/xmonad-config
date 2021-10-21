@@ -418,7 +418,7 @@ getAppCommand = snd . getNameCommand
 
 myXmobarPP :: X PP
 myXmobarPP = clickablePP . filterOutWsPP [scratchpadWorkspaceTag] $ def
-      { ppCurrent          = xmobarColor "#c574dd" "#21232a:3" . wrap "<box type=Bottom offset=C5 width=3 color=#c574dd>" "</box>"  -- xmobarBorder "VBoth" "#21232a" 4
+      { ppCurrent          = xmobarColor "#c574dd" "#272930" . wrap "<box type=Bottom offset=C5 width=3 color=#c574dd>" "</box>" . xmobarBorder "VBoth" "#272930" 4
       , ppVisible          = xmobarColor "#a9b1d6" ""
       , ppHidden           = xmobarColor "#E0AF68" "" -- . xmobarBorder "Bottom" "#282c34" 3
       , ppVisibleNoWindows = Just (xmobarColor "#a9b1d6" "")
